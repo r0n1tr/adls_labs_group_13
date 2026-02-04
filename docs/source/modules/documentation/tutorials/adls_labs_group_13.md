@@ -167,6 +167,136 @@ Moderate quantisation (8-16 bit) provides essentially free compression with negl
 ### Observations
 
 ### Key Takeaway
+
+
+
+## Hardware metadata pass
+
+The MASE hardware metadata pass populates the hardware {} metadata of a module with information needed to generate the the module instances of Verilog modules.
+
+The hardware metadata includes:
+- SystemVerilog dependency files needed to generate the module
+- Parameters needed to instantiate the module
+- Tool-chain used to create the module hardware e.g. (INTERNAL, EXTERNAL, HLS)
+- Device_id to which the hardware the node is mapped to 
+- Interface which the node receives weights from
+
+The hardware metadata differs from the software metadata in that ...
+
+## MASE "top.sv" Emitted Hardware
+
+In the lab, we build an MLP (Multi Layer Perceptron) with one linear layer (4 input features, 8 output features)
+
+The top level file instantiates
+- **Fixed point linear layer** module, which performs the  $y = x A^T + b$  calculation
+- **Weights and biases sources** which are BRAM stores off the values needed for the linear layer
+- **Fixed ReLU** module to perform the rectified linear function
+```verilog
+fixed_linear #( ...
+
+fc1_weight_source #( ...
+
+fc1_bias_source #( ...
+
+fixed_relu #( ...
+```
+
+Each module has an data and ready in/out to synchronise data transfers between the layers
+
+<img width="1608" height="1842" alt="image" src="https://github.com/user-attachments/assets/0972fb90-95f8-45ea-b53d-0924c5f6b2db" />
+*Figure 1: MLP MASE graph, sourced from mg.draw()
+
+
+## Simulation Results
+
+The *simulate()* call runs a cocotb test which hooks to a Verilated model of the top level. 
+
+<img width="1526" height="556" alt="image" src="https://github.com/user-attachments/assets/969d0e7e-88e8-4327-afc8-ef02668f0635" />
+*Figure 2: Results of cocotb simulation*
+
+
+## Implementing RReLU
+
+The randomised leaky rectified linear unit [RReLU](https://www.google.com) in PyTorch implements the function below, where a is a randomised fixed point number within a range specified by inputs.
+$$
+\mathrm{RReLU}(x) =
+\begin{cases}
+x, & \text{if } x \ge 0 \\
+a x, & \text{otherwise}
+\end{cases}
+$$To implement this in hardware, for the purpose of experimentation, we created a version with the following architecture 
+
+### Design 
+
+An LFSR generates random integers.
+``` systemverilog
+module lfsr32 #(
+    parameter logic [31:0] RAND_SEED = 32'hA69420B1
+) (
+    input  logic        clk,
+    input  logic        rst,
+    output logic [31:0] o_dout
+);
+    logic [31:0] sreg;
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            sreg <= 32'b1;
+        end else begin
+            sreg <= {sreg[30:0], (sreg[0] ^ sreg[1] ^ sreg[21] ^ sreg[31])};
+        end
+    end
+
+    assign o_dout = sreg;
+endmodule
+```
+
+The module takes in a lower and upper fixed point value and uses the LFSR random number to get a number within that range.
+```systemverilog
+localparam [DATA_IN_0_PRECISION_0-1:0] LOWER = 7; // 0.875
+localparam [DATA_IN_0_PRECISION_0-1:0] UPPER = 1; // 0.125
+localparam RANGE = UPPER - LOWER;
+logic [DATA_IN_0_PRECISION_0:0] random;
+logic [64:0] ran_scaled;
+
+assign ran_scaled = LOWER + (random * RANGE) >> DATA_IN_0_PRECISION_0;
+```
+
+The output is scaled by the random number if the input is negative, as specified in the RReLU PyTorch documentation.
+
+```systemverilog
+always_ff @(posedge clk) begin
+    if (rst) begin
+        data_out_0[i] <= 0;
+    end else begin
+        if ($signed(data_in_0[i]) <= 0) begin
+            data_out_0[i] <= '0;
+        end else begin
+            data_out_0[i] <= ran_scaled * data_in_0[i];
+        end
+    end
+end
+```
+
+A one cycle delay is added to the valid and ready signals to account for the latency.
+
+```systemverilog
+always_ff @(posedge clk) begin
+    if (rst) begin
+        data_out_0_valid <= 0;
+        data_in_0_ready  <= 0;
+    end else begin
+        data_out_0_valid <= data_in_0_valid;
+        data_in_0_ready  <= data_out_0_ready;
+    end
+end
+```
+
+### Assumptions and Limitations
+The implementation assumes 
+- Inputs DATA_IN_0_PRECISION_0 are 32 bits or less.
+Limitations are
+- Distribution is not perfectly uniform.
 ---
 
 ## Overall Reflection
