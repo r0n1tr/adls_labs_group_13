@@ -295,6 +295,7 @@ end
 ### Assumptions and Limitations
 The implementation assumes 
 - Inputs DATA_IN_0_PRECISION_0 are 32 bits or less.
+
 Limitations include
 - Distribution is not perfectly uniform.
 ---
