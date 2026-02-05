@@ -446,28 +446,4 @@ Limitations include
 - Distribution is not perfectly uniform.
 ---
 
-## Overall Reflection
 
-The ADLS labs provided hands-on experience with **end-to-end deep learning system design**, bridging the gap between:
-- Model development
-- Optimisation techniques
-- Deployment constraints
-- Hardware considerations
-
-The MASE framework enabled a structured and realistic workflow aligned with modern industry practices.
-
----
-
-## Tools & Technologies
-
-- MASE Toolchain  
-- PyTorch  
-- Model Compression Techniques  
-- Neural Architecture Search  
-- Mixed-Precision Inference  
-
----
-
-## Conclusion
-
-Through these labs, I developed a deeper understanding of **deployment-aware machine learning**, reinforcing the importance of system-level thinking when designing and optimising modern deep learning models.
