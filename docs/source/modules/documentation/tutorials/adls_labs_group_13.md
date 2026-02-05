@@ -92,6 +92,83 @@ This tutorial uses a pre-trained BERT model for sentiment analysis on the IMDb d
 - Mase Pass: The fuse_lora_weights_transform_pass is crucial for deployment; without it, you are running extra operations for no reason.
 ---
 
+## Lab 1 — Model Compression with Quantization and Pruning
+
+### General Introduction
+
+In this lab, we explore how to use **MASE** to compress a BERT model using **quantization** and **pruning** techniques. We apply fixed-point quantization and structured parameter removal to reduce model size and computational cost.
+
+After each compression stage, additional fine-tuning is performed to recover any performance degradation introduced by quantization or pruning.
+
+---
+
+### Learning Tasks
+
+1. Review **Tutorial 3 — Running Quantization-Aware Training (QAT) on BERT** to understand how to quantize a BERT model and perform post-quantization fine-tuning.
+2. Review **Tutorial 4 — Unstructured Pruning on BERT** to learn how to prune a quantized model for further compression.
+
+---
+
+### Implementation Tasks
+
+#### Task 1 — Exploring Fixed-Point Quantization Precision
+
+In Tutorial 3, every Linear layer in the model is quantized using a fixed configuration. In this task, we extend this analysis by exploring a wider range of fixed-point precisions.
+
+##### Task 1a — Accuracy vs Fixed-Point Width
+
+- A range of fixed-point widths from **4 to 32 bits** is evaluated.
+- A figure is plotted where:
+  - **x-axis:** Fixed-point width  
+  - **y-axis:** Highest achieved accuracy on the IMDb dataset  
+- The procedure follows the workflow outlined in Tutorial 3.
+
+![Accuracy vs Fixed-Point Width](accuracy_vs_bit_width.png)
+
+##### Task 1b — PTQ vs QAT Comparison
+
+- Separate curves are plotted for:
+  - **Post-Training Quantization (PTQ)**
+  - **Quantization-Aware Training (QAT)**
+- This comparison highlights the effect of post-quantization fine-tuning at each precision level.
+
+![PTQ vs QAT Accuracy](ptq_vs_qat.png)
+
+---
+
+#### Task 2 — Pruning the Best Quantized Model
+
+Using the best-performing model obtained from Task 1, we apply pruning to further reduce model complexity.
+
+##### Task 2a — Accuracy vs Sparsity
+
+- Sparsity levels are varied from **0.1 to 0.9**.
+- A figure is plotted where:
+  - **x-axis:** Sparsity  
+  - **y-axis:** Highest achieved accuracy on the IMDb dataset  
+- The pruning procedure follows the workflow described in Tutorial 4.
+
+![Accuracy vs Sparsity](pruning_sparsity_vs_accuracy.png)
+
+##### Task 2b — Pruning Strategy Comparison
+
+- Separate curves are plotted for:
+  - **Random pruning**
+  - **L1-Norm pruning**
+- This comparison evaluates the impact of different pruning strategies on model accuracy.
+
+![Alt text](./lab2.2.png)
+
+---
+
+### Observations
+- *(To be filled in)*
+
+### Key Takeaway
+- *(To be filled in)*
+
+---
+
 ## Lab 1 — Model Compression
 
 ### Objectives
@@ -112,11 +189,80 @@ This tutorial uses a pre-trained BERT model for sentiment analysis on the IMDb d
 - Explore automated architecture optimisation
 - Define and evaluate search spaces
 
-### Work Completed
+### **Work Completed**
 
+### Task 1 — Comparing Hyperparameter Samplers
 
+Tutorial 5 initially demonstrates the use of **random search** to find an optimal configuration of hyperparameters and layer choices for the BERT model. We extend this analysis by evaluating additional Optuna samplers.
 
-![Alt text](./lab2.2.png)
+#### Samplers Evaluated
+- **RandomSampler**
+- **GridSampler**
+- **TPESampler**
+
+Each sampler explores the same search space and optimisation objective, allowing a direct comparison of search efficiency and convergence behaviour.
+
+- **Search Space:** To accurately compare the performance of each sampler, a fixed and confined search space was required, particularly for the GridSampler. Due to the exhaustive nature of grid search and its poor scalability in high-dimensional spaces, we used the **TPESampler** to first identify a promising subspace. This confined search space was then used consistently across all samplers to ensure a fair comparison.
+
+Each sampler is represented by a separate curve to compare performance over time.
+
+![Sampler Comparison — Accuracy vs Trials](random_training.png)
+![Sampler Comparison — Accuracy vs Trials](tpe_training.png)
+![Sampler Comparison — Accuracy vs Trials](grid_training.png)
+
+#### Observations
+- The **TPESampler** consistently achieves higher accuracy with fewer trials compared to both RandomSampler and GridSampler.
+- This is because TPE is a **model-based Bayesian optimisation method** that builds probabilistic models of good and bad hyperparameter configurations, allowing it to focus future samples on the most promising regions of the search space.
+- Unlike GridSampler, TPE **does not suffer from the curse of dimensionality**, as it does not exhaustively evaluate every possible combination.
+- Compared to RandomSampler, TPE is more **sample-efficient**, as each new trial is informed by the results of previous trials rather than being drawn independently.
+- TPE also handles **mixed and conditional hyperparameters** effectively, making it well-suited for complex neural architectures such as BERT.
+- As a result, TPE converges faster and achieves better performance within a limited trial budget.
+
+---
+
+### Task 2 — Compression-Aware Neural Architecture Search
+
+In Tutorial 5, NAS is first used to identify an optimal model configuration, after which the **CompressionPipeline** is applied to quantize and prune the model. However, this post-search compression may be suboptimal, as different architectures exhibit varying sensitivity to compression techniques.
+
+To address this, we implement a **compression-aware search**, where quantization and pruning are incorporated directly into each Optuna trial.
+
+---
+
+#### Task 2a — Compression-Aware Objective Function
+
+Within the Optuna objective function:
+1. The model is constructed according to the sampled hyperparameters.
+2. The model is trained for an initial number of iterations.
+3. The **CompressionPipeline** is invoked to apply quantization and pruning.
+4. Training continues for additional epochs after compression.
+5. The objective function returns the **final model accuracy after compression**.
+
+The sampler that yielded the best results in **Task 1** is reused for this experiment.
+
+An additional variant is considered where **final training is performed after quantization/pruning**, allowing further recovery of accuracy.
+
+---
+
+#### Task 2b — Performance Comparison
+
+A new figure is plotted with:
+- **x-axis:** Number of completed trials  
+- **y-axis:** Maximum achieved accuracy up to that trial  
+
+The figure includes three curves:
+1. Best performance from **Task 1** (no compression)
+2. Compression-aware search **without** post-compression training
+3. Compression-aware search **with** post-compression training
+
+![Compression-Aware NAS — Accuracy vs Trials](compression_aware_accuracy_vs_trials.png)
+
+---
+
+#### Observations
+- *(To be filled in)*
+
+#### Key Takeaway
+- *(To be filled in)*
 
 
 ### Observations
