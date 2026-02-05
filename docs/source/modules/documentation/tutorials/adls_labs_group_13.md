@@ -138,7 +138,7 @@ In Tutorial 3, every Linear layer in the model is quantized using a fixed config
 
 #### Task 2 — Pruning the Best Quantized Model
 
-Using the best-performing model obtained from Task 1, we apply pruning to further reduce model complexity.
+Using the best-performing model obtained from Task 1 which seemed to be ~16 bits. We apply pruning to further reduce model complexity.
 
 ##### Task 2a — Accuracy vs Sparsity
 
@@ -148,7 +148,7 @@ Using the best-performing model obtained from Task 1, we apply pruning to furthe
   - **y-axis:** Highest achieved accuracy on the IMDb dataset  
 - The pruning procedure follows the workflow described in Tutorial 4.
 
-![Accuracy vs Sparsity](pruning_sparsity_vs_accuracy.png)
+![Accuracy vs Sparsity](sparsity_vs_accuracy.png)
 
 ##### Task 2b — Pruning Strategy Comparison
 
@@ -162,11 +162,13 @@ Using the best-performing model obtained from Task 1, we apply pruning to furthe
 ---
 
 ### Observations
-- *(To be filled in)*
+- L1-norm pruning dominates random pruning across all sparsity levels
+- Random pruning is highly unstable beyond moderate sparsity
+- Magnitude-aware pruning enables higher compression without major accuracy loss
+- Extremely high sparsity remains challenging even with complex pruning strategies
 
 ### Key Takeaway
-- *(To be filled in)*
-
+- The experiments demonstrate that fine-tuning is mandatory for effective model compression, as naive approaches like Post-Training Quantization cause performance to collapse at lower bit-widths. However, by retraining the model to adapt to constraints, BERT proves highly robust, recovering near-original accuracy even when combining 16-bit precision with high sparsity (up to ~55%). 
 ---
 
 ## Lab 1 — Model Compression
