@@ -185,44 +185,62 @@ Using the best-performing model obtained from Task 1 which seemed to be ~16 bits
 
 ---
 
-## Lab 2 — Neural Architecture Search (NAS)
+## Lab 2 - Neural Architecture Search (NAS)
 
 ### Objectives
-- Explore automated architecture optimisation
-- Define and evaluate search spaces
+- Explore automated architecture optimisation using Optuna samplers within Mase 
+- Define, evaluate and compare search spaces and strategies for Bert
 
 ### **Work Completed**
 
-### Task 1 — Comparing Hyperparameter Samplers
+### Task 1 - Comparing Hyperparameter Samplers
 
-Tutorial 5 initially demonstrates the use of **random search** to find an optimal configuration of hyperparameters and layer choices for the BERT model. We extend this analysis by evaluating additional Optuna samplers.
+Tutorial 5 initially demonstrates the use of random search to find an optimal configuration of hyperparameters and layer choices for the BERT-tiny model for the IMDb classification task. We extend this by evaluating three Optuna samplers.
 
 #### Samplers Evaluated
-- **RandomSampler**
-- **GridSampler**
-- **TPESampler**
+- **RandomSampler**: Each trial iteration pulls hyperparameter values from the search space uniformly. Provides an unbiased baseline, however, trials are independent and can not infer information from other trials.
+- **GridSampler**: Enumerates combinations of predetermined grid. This method ensures full coverage of space but scales poorly. We therefore limit the grid to four main hyperparameters only. 
+- **TPESampler** (Tree-structured Parzen Estimator): Model-based bayesian optimisation method utilising an intial warm-up of random exploration and two kernel density estimators. These densite estimators, positive and negative hyperparamter configurations, maximise the ratio $\ell(x)/g(x)$, leading the search towards positive regions of the search space.
 
 Each sampler explores the same search space and optimisation objective, allowing a direct comparison of search efficiency and convergence behaviour.
 
-- **Search Space:** To accurately compare the performance of each sampler, a fixed and confined search space was required, particularly for the GridSampler. Due to the exhaustive nature of grid search and its poor scalability in high-dimensional spaces, we used the **TPESampler** to first identify a promising subspace. This confined search space was then used consistently across all samplers to ensure a fair comparison.
+To ensure a fair comparison, all samplers operated over the same search space:
 
-Each sampler is represented by a separate curve to compare performance over time.
+| Parameter | Search Space |
+|-----------|-------------|
+| `num_hidden_layers` | {2, 4, 8} |
+| `num_attention_heads` | {2, 4, 8, 16} |
+| `hidden_size` | {128, 192, 256, 384, 512} |
+| `intermediate_size` | {512, 768, 1024, 1536, 2048} |
+| Linear layer type | {`nn.Linear`, `Identity`} (per eligible layer) |
+
+Each trial trained a freshly initialised BERT model from the sampled configuration for 2 epochs on the IMDb training set. All experiments used 20 trials per sampler. We report the running maximum accuracy to capture convergence behaviour.
+
+TPESampler 
+
+Each sampler is represented by a separate curve to compare performance over time. The tests were each run for two epochs for 10 trial runs, using the running maximal error. These results have been plotted below. 
 
 ![Sampler Comparison — Accuracy vs Trials](random_training.png)
 ![Sampler Comparison — Accuracy vs Trials](tpe_training.png)
 ![Sampler Comparison — Accuracy vs Trials](grid_training.png)
 
+| Sampler | Best Accuracy (10 trials) |
+|---------|--------------------------|
+| RandomSampler | 0.843 |
+| GridSampler |  |
+| TPESampler |  |
+
+
 #### Observations
-- The **TPESampler** consistently achieves higher accuracy with fewer trials compared to both RandomSampler and GridSampler.
-- This is because TPE is a **model-based Bayesian optimisation method** that builds probabilistic models of good and bad hyperparameter configurations, allowing it to focus future samples on the most promising regions of the search space.
-- Unlike GridSampler, TPE **does not suffer from the curse of dimensionality**, as it does not exhaustively evaluate every possible combination.
-- Compared to RandomSampler, TPE is more **sample-efficient**, as each new trial is informed by the results of previous trials rather than being drawn independently.
-- TPE also handles **mixed and conditional hyperparameters** effectively, making it well-suited for complex neural architectures such as BERT.
-- As a result, TPE converges faster and achieves better performance within a limited trial budget.
+
+- Sample efficiency through Bayesian modelling: TPE uses previous trial outcomes to model hyperparameter to performance relationships, making each successive trial more likely to sample positive regions after the warm-up phase.
+- Effective handling of conditional and mixed search spaces: TPE naturally handles the BERT NAS problem's conditional parameters through tree-structured decomposition, unlike GridSampler which struggles with dynamic parameter counts.
+- Robustness to the curse of dimensionality: TPE maintains efficiency in high-dimensional spaces by modeling each hyperparameter independently, avoiding the exponential scaling that affects grid-based methods.
+- Convergence behaviour: TPE's running maximum accuracy curve shows steeper initial climb than RandomSampler, identifying good configurations earlier once it builds informative density estimates after the initial random search in the first 10 trials.
 
 ---
 
-### Task 2 — Compression-Aware Neural Architecture Search
+### Task 2 - Compression-Aware Neural Architecture Search
 
 In Tutorial 5, NAS is first used to identify an optimal model configuration, after which the **CompressionPipeline** is applied to quantize and prune the model. However, this post-search compression may be suboptimal, as different architectures exhibit varying sensitivity to compression techniques.
 
@@ -266,10 +284,6 @@ The figure includes three curves:
 #### Key Takeaway
 - *(To be filled in)*
 
-
-### Observations
-
-### Key Takeaway
 ---
 
 ## Lab 3 — Mixed Precision Optimisation
