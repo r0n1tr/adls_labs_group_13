@@ -376,6 +376,18 @@ The *simulate()* call runs a cocotb test which hooks to a Verilated model of the
 <img width="1526" height="556" alt="image" src="https://github.com/user-attachments/assets/969d0e7e-88e8-4327-afc8-ef02668f0635" />
 *Figure 2: Results of cocotb simulation*
 
+### Generating Wave forms (MASE bug)
+
+There is a bug in the MASE "simulate()" function that doesn't allow you to output waveform files.
+
+In the file *src/chop/actions/simulate.py*, the runner never takes in the waves parameter, hence never generates waves
+
+<img width="772" height="247" alt="image" src="https://github.com/user-attachments/assets/ad92cc1b-ba5c-4d17-9004-c894c41d1888" />
+*Figure 3: BugFix for waves bug*
+
+Once this fix was implemented, we ran the simulation and opened the *dump.fst* file.
+<img width="1778" height="523" alt="image" src="https://github.com/user-attachments/assets/06c15c0b-43c2-4ab3-8874-2669fd1b27cb" />
+*Figure 4: ReLU Waveform*
 
 ## Implementing RReLU
 
@@ -390,7 +402,7 @@ $$To implement this in hardware, for the purpose of experimentation, we created 
 
 ### Design 
 
-An LFSR generates random integers.
+An LFSR generates random 32 bit integers.
 ``` systemverilog
 module lfsr32 #(
     parameter logic [31:0] RAND_SEED = 32'hA69420B1
@@ -399,44 +411,51 @@ module lfsr32 #(
     input  logic        rst,
     output logic [31:0] o_dout
 );
-    logic [31:0] sreg;
-
-    always_ff @(posedge clk) begin
-        if (rst) begin
-            sreg <= 32'b1;
-        end else begin
-            sreg <= {sreg[30:0], (sreg[0] ^ sreg[1] ^ sreg[21] ^ sreg[31])};
-        end
+  logic [31:0] sreg;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      sreg <= RAND_SEED;
+    end else begin
+      sreg <= {sreg[30:0], (sreg[0] ^ sreg[1] ^ sreg[21] ^ sreg[31])};
     end
-
-    assign o_dout = sreg;
+  end
+  assign o_dout = sreg;
 endmodule
 ```
 
 The module takes in a lower and upper fixed point value and uses the LFSR random number to get a number within that range.
 ```systemverilog
-localparam [DATA_IN_0_PRECISION_0-1:0] LOWER = 7; // 0.875
-localparam [DATA_IN_0_PRECISION_0-1:0] UPPER = 1; // 0.125
-localparam RANGE = UPPER - LOWER;
-logic [DATA_IN_0_PRECISION_0:0] random;
-logic [64:0] ran_scaled;
+localparam logic [DATA_IN_0_PRECISION_0-1:0] UPPER = 7;  // 0.875
+localparam logic [DATA_IN_0_PRECISION_0-1:0] LOWER = 1;  // 0.125
+localparam logic [DATA_IN_0_PRECISION_0-1:0] RANGE = UPPER - LOWER;
+localparam logic [31:0] RAND_SEED = 32'hA69420B1;
 
-assign ran_scaled = LOWER + (random * RANGE) >> DATA_IN_0_PRECISION_0;
+logic [31:0] random;
+logic [63:0] rand_scaled;
+logic [DATA_IN_0_PRECISION_0-1:0] rand_fixed;
+logic signed [DATA_IN_0_PRECISION_0-1:0] rand_fixed_s;
+
+always_comb begin
+  rand_scaled = random * RANGE;
+  rand_fixed = LOWER + (rand_scaled >> 32);
+end
 ```
 
 The output is scaled by the random number if the input is negative, as specified in the RReLU PyTorch documentation.
 
 ```systemverilog
+logic signed[2*DATA_IN_0_PRECISION_0-1:0] mult_tmp;
 always_ff @(posedge clk) begin
-    if (rst) begin
-        data_out_0[i] <= 0;
+  if (rst) begin
+    data_out_0[i] <= 0;
+  end else begin
+    if ($signed(data_in_0[i]) <= 0) begin
+      mult_tmp = rand_fixed_s * $signed(data_in_0[i]);
+      data_out_0[i] <= mult_tmp >>> DATA_IN_0_PRECISION_1;
     end else begin
-        if ($signed(data_in_0[i]) <= 0) begin
-            data_out_0[i] <= '0;
-        end else begin
-            data_out_0[i] <= ran_scaled * data_in_0[i];
-        end
+      data_out_0[i] <= data_in_0[i];
     end
+  end
 end
 ```
 
@@ -455,11 +474,34 @@ end
 ```
 
 ### Assumptions and Limitations
-The implementation assumes 
+Assumptions:
 - Inputs DATA_IN_0_PRECISION_0 are 32 bits or less.
-
-Limitations include
+- Hardware can handle multiple multiplications in one cycle 
+Limitations:
 - Distribution is not perfectly uniform.
----
+- Multiplication rounding is not uniform
+### Simulation Results
+
+#### Accuracy
+
+In this experiment. We added an output layer to the MLP and fed generated 4D linearly separable data to a model with ReLU and one with RReLU. Results showed the RReLU in PyTorch is greatly beneficial for the speed of convergence of MLPs.
+
+<img width="695" height="470" alt="image" src="https://github.com/user-attachments/assets/39b85033-cfe1-4bd3-b312-58dece91d4ef" />
+*Figure 5: ReLU vs RReLU PyTorch Performance Comparison*
+#### Waves
+
+
+Running the simulation again shows the randomly generated "rand_fixed_s" coefficients which lie within the range specified.
+
+<img width="1665" height="642" alt="image" src="https://github.com/user-attachments/assets/ba6c345e-3bdd-4528-9fbd-c92d8aeba0af" />
+*Figure 6: RReLU hardware waveform*
+
+#### Latency
+
+The simulation latency increases to 300ns from 280ns due to the added cycle of delay.
+
+<img width="1119" height="439" alt="image" src="https://github.com/user-attachments/assets/a2d0a8e3-b511-458a-a34a-0b0dc6b3ee30" />
+*Figure 7: RReLU simulation log*
+
 
 
