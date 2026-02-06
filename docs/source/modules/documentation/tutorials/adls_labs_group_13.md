@@ -45,13 +45,6 @@ Exporting & Checkpointing
 The tutorial concludes by showing how to save the transformed graph to disk (mg.export()) and reload it later (MaseGraph.from_checkpoint()).
 
 
-Qna Questions:
-
-- Why Torch FX? Mase chooses FX over ONNX or TorchScript because it is Python-native. It allows graph transformations using pure Python code without needing a C++ runtime or complex external standard.
-- The Necessity of Dummy Inputs: In the "Shape Propagation" step, Mase requires a real dummy input tensor to run a forward pass. This is how it determines specific tensor sizes (H, W, Channels) at every node in the graph.
-- Graph Integrity: When writing a Transform Pass to remove a node (like Dropout), you cannot just delete it. You must use node.replace_all_uses_with(parent_node) first. If you delete a node that is still being used as an input by another node, the graph becomes invalid and will crash.
-- Where is the data stored? All Mase-specific information (quantisation bits, hardware settings, shapes) is stored in a hidden dictionary on each node: node.meta["mase"].
-
 ## Tutorial 2
 
 This tutorial uses a pre-trained BERT model for sentiment analysis on the IMDb dataset, comparing standard Supervised Fine-Tuning (SFT) against the LoRA (Low-Rank Adaptation) technique.
