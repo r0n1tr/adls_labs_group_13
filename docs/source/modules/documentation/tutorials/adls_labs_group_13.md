@@ -3,7 +3,7 @@
 
 ## Overview
 
-This document summarises the work completed across all **ADLS labs and tutorials**, following the official MASE / ADLS workflow.  
+This document summarises the work completed across all **ADLS labs**. 
 The focus of the labs was on **model optimisation, hardware–software co-design, and deployment-aware deep learning**, using the MASE toolchain.
 
 ---
@@ -158,6 +158,8 @@ Using the best-performing model obtained from Task 1 which seemed to be ~16 bits
 - This comparison evaluates the impact of different pruning strategies on model accuracy.
 
 ![Alt text](./lab2.2.png)
+
+Although separate curves can be plotted, putting them on one plot allows a sharper comparison between performances. 
 
 ---
 
