@@ -324,6 +324,7 @@ fixed_relu #( ...
 Each module has an data and ready in/out to synchronise data transfers between the layers
 
 <img width="1608" height="1842" alt="image" src="https://github.com/user-attachments/assets/0972fb90-95f8-45ea-b53d-0924c5f6b2db" />
+
 *Figure 1: MLP MASE graph, sourced from mg.draw()
 
 
@@ -332,6 +333,7 @@ Each module has an data and ready in/out to synchronise data transfers between t
 The *simulate()* call runs a cocotb test which hooks to a Verilated model of the top level. 
 
 <img width="1526" height="556" alt="image" src="https://github.com/user-attachments/assets/969d0e7e-88e8-4327-afc8-ef02668f0635" />
+
 *Figure 2: Results of cocotb simulation*
 
 ### Generating Wave forms (MASE bug)
@@ -341,10 +343,12 @@ There is a bug in the MASE "simulate()" function that doesn't allow you to outpu
 In the file *src/chop/actions/simulate.py*, the runner never takes in the waves parameter, hence never generates waves
 
 <img width="772" height="247" alt="image" src="https://github.com/user-attachments/assets/ad92cc1b-ba5c-4d17-9004-c894c41d1888" />
+
 *Figure 3: BugFix for waves bug*
 
 Once this fix was implemented, we ran the simulation and opened the *dump.fst* file.
 <img width="1778" height="523" alt="image" src="https://github.com/user-attachments/assets/06c15c0b-43c2-4ab3-8874-2669fd1b27cb" />
+
 *Figure 4: ReLU Waveform*
 
 ## Implementing RReLU
@@ -445,13 +449,16 @@ Limitations:
 In this experiment. We added an output layer to the MLP and fed generated 4D linearly separable data to a model with ReLU and one with RReLU. Results showed the RReLU in PyTorch is greatly beneficial for the speed of convergence of MLPs.
 
 <img width="695" height="470" alt="image" src="https://github.com/user-attachments/assets/39b85033-cfe1-4bd3-b312-58dece91d4ef" />
+
 *Figure 5: ReLU vs RReLU PyTorch Performance Comparison*
+
 #### Waves
 
 
 Running the simulation again shows the randomly generated "rand_fixed_s" coefficients which lie within the range specified.
 
 <img width="1665" height="642" alt="image" src="https://github.com/user-attachments/assets/ba6c345e-3bdd-4528-9fbd-c92d8aeba0af" />
+
 *Figure 6: RReLU hardware waveform*
 
 #### Latency
@@ -459,6 +466,7 @@ Running the simulation again shows the randomly generated "rand_fixed_s" coeffic
 The simulation latency increases to 300ns from 280ns due to the added cycle of delay.
 
 <img width="1119" height="439" alt="image" src="https://github.com/user-attachments/assets/a2d0a8e3-b511-458a-a34a-0b0dc6b3ee30" />
+
 *Figure 7: RReLU simulation log*
 
 
