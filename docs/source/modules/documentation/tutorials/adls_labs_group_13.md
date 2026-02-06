@@ -78,11 +78,11 @@ This tutorial uses a pre-trained BERT model for sentiment analysis on the IMDb d
 
 ---
 
-## Lab 1 - Model Compression with Quantization and Pruning
+## Lab 1 - Model Compression with quantisation and Pruning
 
 ### General Introduction
 
-In this lab, we compress a BERT model using **quantisation** and **pruning** techniques. We apply fixed-point quantization and structured parameter removal to reduce model size and computational cost.
+In this lab, we compress a BERT model using **quantisation** and **pruning** techniques. We apply fixed-point quantisation and structured parameter removal to reduce model size and computational cost.
 
 After compression, fine-tuning is performed to recover any performance degradation introduced by quantisation or pruning.
 
@@ -90,16 +90,16 @@ After compression, fine-tuning is performed to recover any performance degradati
 
 ### Learning Tasks
 
-1. Review **Tutorial 3 — Running Quantization-Aware Training (QAT) on BERT** to understand how to quantize a BERT model and perform post-quantization fine-tuning.
-2. Review **Tutorial 4 — Unstructured Pruning on BERT** to learn how to prune a quantized model for further compression.
+1. Review **Tutorial 3 — Running quantisation-Aware Training (QAT) on BERT** to understand how to quantise a BERT model and perform post-quantisation fine-tuning.
+2. Review **Tutorial 4 — Unstructured Pruning on BERT** to learn how to prune a quantised model for further compression.
 
 ---
 
 ### Implementation Tasks
 
-#### Task 1 - Exploring Fixed-Point Quantization Precision
+#### Task 1 - Exploring Fixed-Point quantisation Precision
 
-In Tutorial 3, every Linear layer in the model is quantized using a fixed configuration. In this task, we extend this analysis by exploring a range of fixed-point precisions.
+In Tutorial 3, every Linear layer in the model is quantised using a fixed configuration. In this task, we extend this analysis by exploring a range of fixed-point precisions.
 
 ##### Task 1a - Accuracy vs Fixed-Point Width
 
@@ -113,15 +113,15 @@ In Tutorial 3, every Linear layer in the model is quantized using a fixed config
 ##### Task 1b - PTQ vs QAT Comparison
 
 - Separate curves are plotted for:
-  - **Post-Training Quantization (PTQ)**
-  - **Quantization-Aware Training (QAT)**
-- This comparison highlights the effect of post-quantization fine-tuning at each precision level.
+  - **Post-Training quantisation (PTQ)**
+  - **quantisation-Aware Training (QAT)**
+- This comparison highlights the effect of post-quantisation fine-tuning at each precision level.
 
 ![PTQ vs QAT Accuracy](ptq_vs_qat.png)
 
 ---
 
-#### Task 2 - Pruning the Best Quantized Model
+#### Task 2 - Pruning the Best quantised Model
 
 Using the best-performing model obtained from Task 1 which seemed to be ~16 bits. We apply pruning to further reduce model complexity.
 
@@ -155,7 +155,7 @@ Although separate curves can be plotted, putting them on one plot allows a sharp
 - Extremely high sparsity remains challenging even with complex pruning strategies
 
 ### Key Takeaway
-- The experiments demonstrate that fine-tuning is mandatory for effective model compression, as naive approaches like Post-Training Quantization cause performance to collapse at lower bit-widths. However, by retraining the model to adapt to constraints, BERT proves highly robust, recovering near-original accuracy even when combining 16-bit precision with high sparsity (up to ~55%). 
+- The experiments demonstrate that fine-tuning is mandatory for effective model compression, as naive approaches like Post-Training quantisation cause performance to collapse at lower bit-widths. However, by retraining the model to adapt to constraints, BERT proves highly robust, recovering near-original accuracy even when combining 16-bit precision with high sparsity (up to ~55%). 
 
 ---
 
@@ -206,9 +206,9 @@ Each sampler is represented by a separate curve to compare performance over time
 
 ### Task 2 - Compression-Aware Neural Architecture Search
 
-In Tutorial 5, NAS is first used to identify an optimal model configuration, after which the CompressionPipeline is applied to quantize and prune the model. However, this post-search compression may be suboptimal, as different architectures exhibit varying sensitivity to compression techniques.
+In Tutorial 5, NAS is first used to identify an optimal model configuration, after which the CompressionPipeline is applied to quantise and prune the model. However, this post-search compression may be suboptimal, as different architectures exhibit varying sensitivity to compression techniques.
 
-To address this, we implement a compression-aware search in which quantization and pruning are applied directly into each Optuna trial.
+To address this, we implement a compression-aware search in which quantisation and pruning are applied directly into each Optuna trial.
 
 ---
 
@@ -217,13 +217,13 @@ To address this, we implement a compression-aware search in which quantization a
 Within the Optuna objective function:
 1. The model is constructed according to the sampled hyperparameters.
 2. The model is trained for an initial number of iterations.
-3. The CompressionPipeline is invoked to apply quantization and pruning.
+3. The CompressionPipeline is invoked to apply quantisation and pruning.
 4. Training continues for additional epochs after compression.
 5. The objective function returns the final model accuracy after compression.
 
 The sampler that yielded the best results in Task 1 (TPESampler) is reused for this experiment.
 
-An additional variant is considered where final training is performed after quantization/pruning, allowing further recovery of accuracy.
+An additional variant is considered where final training is performed after quantisation/pruning, allowing further recovery of accuracy.
 
 ---
 
@@ -238,9 +238,9 @@ The figure includes three curves:
 
 
 #### Observations
-- Model without post-training plateaus at ~0.77. After training, quantization and pruning are applied and the model is evaluated without any post-training. Quantization rounds all weights to 8-bit fixed point with only 4 fractional bits of precision, while L1 pruning zeros out the 50% smallest weights in each layer. The first few trials score very poorly at ~0.50.
+- Model without post-training plateaus at ~0.77. After training, quantisation and pruning are applied and the model is evaluated without any post-training. quantisation rounds all weights to 8-bit fixed point with only 4 fractional bits of precision, while L1 pruning zeros out the 50% smallest weights in each layer. The first few trials score very poorly at ~0.50.
 - Model with post-training converges at ~0.87. The same compression is applied, but the model is then fine-tuned. This allows the weights to adjust and compensate for the pruning.
-- Post trained model vs task 1 baseline: The compression-aware search favours architectures that are robust to quantization and pruning. Additionally, removing 50% of weights acts as a form of regularisation. Removing some parameters reduces overfitting, which is why the compressed and fine-tuned model ends up generalising slightly better than the task 1 baseline.
+- Post trained model vs task 1 baseline: The compression-aware search favours architectures that are robust to quantisation and pruning. Additionally, removing 50% of weights acts as a form of regularisation. Removing some parameters reduces overfitting, which is why the compressed and fine-tuned model ends up generalising slightly better than the task 1 baseline.
 
 ---
 
