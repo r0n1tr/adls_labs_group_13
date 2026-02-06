@@ -14,7 +14,7 @@ The focus of the labs was on **model optimisation, hardware–software co-design
 
 This tutorial introduces the Mase framework, explaining how it imports, represents, and transforms neural network models for hardware and software optimisation.
 
-### Key Concepts
+### Notes
 
 
 #### 1. Importing Models
@@ -56,13 +56,13 @@ Qna Questions:
 
 This tutorial uses a pre-trained BERT model for sentiment analysis on the IMDb dataset, comparing standard Supervised Fine-Tuning (SFT) against the LoRA (Low-Rank Adaptation) technique.
 
-### Key Concepts
+### Notes
 
 #### 1. Task Setup
 
 - Goal: Classify movie reviews as positive or negative using the IMDb dataset.
 - Model: A "tiny" variant of BERT is loaded from HuggingFace.
-- Architecture Adjustment: A classification head (Linear Layer + Cross Entropy Loss) is attached to the pre-trained encoder.
+- A classification head (Linear Layer + Cross Entropy Loss) is attached to the pre-trained encoder.
 
 #### 2. Customising the Compute Graph
 
@@ -75,30 +75,23 @@ This tutorial uses a pre-trained BERT model for sentiment analysis on the IMDb d
 - Cost: While effective, SFT requires updating a large number of parameters (order of millions), consuming significant memory.
 
 #### 4. Parameter Efficient Fine-Tuning (PEFT) with LoRA
-- Concept: Instead of updating the massive weight matrix *W*, LoRA updates two tiny low-rank matrices *A* and *B*, such that  
-  *W*<sub>new</sub> = *W*<sub>fixed</sub> + *A* × *B*.
+- Concept: Instead of updating the massive weight matrix *W*, LoRA updates two smaller low-rank matrices *A* and *B*, such that *W*<sub>new</sub> = *W*<sub>fixed</sub> + *A* × *B*.
 - Mase Implementation Using `insert_lora_adapter_transform_pass`, the standard Linear layers are automatically swapped for LoRA layers.
-- Benefit: Reduces trainable parameters significantly (approx. **4.5× reduction** in this example), speeding up training and reducing memory usage with comparable accuracy.
+- Benefit: Reduces trainable parameters significantly (~4.5× reduction), speeding up training and reducing memory usage.
 
 #### 5. Optimising for Inference*
 - Fusion: After training, the `fuse_lora_weights_transform_pass` permanently merges the learned *A* × *B* update into the original weights *W*.
 - Result: The model returns to its original architecture (*Y* = *XW*<sub>fused</sub> + *b*), ensuring inference is just as fast as the original model with no extra computational overhead.
 
-
-#### Important Details for Q&A
-- Why freeze embeddings? In NLP models, the embedding layer often contains the vast majority of parameters but requires little adjustment for downstream tasks. Freezing it drastically saves resources.
-- LoRA Trade-off: The "rank" (r) parameter controls the balance. Higher rank = more capacity to learn (higher accuracy) but more memory. Lower rank = extreme efficiency.
-- Inference Speed: A LoRA model during training is slower (extra matrix multiplications). A LoRA model after fusion is identical in speed to the original base model.
-- Mase Pass: The fuse_lora_weights_transform_pass is crucial for deployment; without it, you are running extra operations for no reason.
 ---
 
 ## Lab 1 — Model Compression with Quantization and Pruning
 
 ### General Introduction
 
-In this lab, we explore how to use **MASE** to compress a BERT model using **quantization** and **pruning** techniques. We apply fixed-point quantization and structured parameter removal to reduce model size and computational cost.
+In this lab, we compress a BERT model using **quantisation** and **pruning** techniques. We apply fixed-point quantization and structured parameter removal to reduce model size and computational cost.
 
-After each compression stage, additional fine-tuning is performed to recover any performance degradation introduced by quantization or pruning.
+After compression, fine-tuning is performed to recover any performance degradation introduced by quantisation or pruning.
 
 ---
 
@@ -113,7 +106,7 @@ After each compression stage, additional fine-tuning is performed to recover any
 
 #### Task 1 — Exploring Fixed-Point Quantization Precision
 
-In Tutorial 3, every Linear layer in the model is quantized using a fixed configuration. In this task, we extend this analysis by exploring a wider range of fixed-point precisions.
+In Tutorial 3, every Linear layer in the model is quantized using a fixed configuration. In this task, we extend this analysis by exploring a range of fixed-point precisions.
 
 ##### Task 1a — Accuracy vs Fixed-Point Width
 
@@ -121,7 +114,6 @@ In Tutorial 3, every Linear layer in the model is quantized using a fixed config
 - A figure is plotted where:
   - **x-axis:** Fixed-point width  
   - **y-axis:** Highest achieved accuracy on the IMDb dataset  
-- The procedure follows the workflow outlined in Tutorial 3.
 
 ![Accuracy vs Fixed-Point Width](accuracy_vs_bit_width.png)
 
@@ -171,19 +163,6 @@ Although separate curves can be plotted, putting them on one plot allows a sharp
 
 ### Key Takeaway
 - The experiments demonstrate that fine-tuning is mandatory for effective model compression, as naive approaches like Post-Training Quantization cause performance to collapse at lower bit-widths. However, by retraining the model to adapt to constraints, BERT proves highly robust, recovering near-original accuracy even when combining 16-bit precision with high sparsity (up to ~55%). 
----
-
-## Lab 1 — Model Compression
-
-### Objectives
-- Apply compression techniques to reduce model size
-- Evaluate accuracy–efficiency trade-offs
-
-### Work Completed
-
-### Observations
-
-### Key Takeaway
 
 ---
 
