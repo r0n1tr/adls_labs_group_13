@@ -8,7 +8,7 @@ The focus of the labs was on **model optimisation, hardware–software co-design
 
 ---
 
-## Lab 0 — Introduction to MASE
+## Lab 0 - Introduction to MASE
 
 ## Tutorial 1
 
@@ -78,7 +78,7 @@ This tutorial uses a pre-trained BERT model for sentiment analysis on the IMDb d
 
 ---
 
-## Lab 1 — Model Compression with Quantization and Pruning
+## Lab 1 - Model Compression with Quantization and Pruning
 
 ### General Introduction
 
@@ -97,11 +97,11 @@ After compression, fine-tuning is performed to recover any performance degradati
 
 ### Implementation Tasks
 
-#### Task 1 — Exploring Fixed-Point Quantization Precision
+#### Task 1 - Exploring Fixed-Point Quantization Precision
 
 In Tutorial 3, every Linear layer in the model is quantized using a fixed configuration. In this task, we extend this analysis by exploring a range of fixed-point precisions.
 
-##### Task 1a — Accuracy vs Fixed-Point Width
+##### Task 1a - Accuracy vs Fixed-Point Width
 
 - A range of fixed-point widths from **4 to 32 bits** is evaluated.
 - A figure is plotted where:
@@ -110,7 +110,7 @@ In Tutorial 3, every Linear layer in the model is quantized using a fixed config
 
 ![Accuracy vs Fixed-Point Width](accuracy_vs_bit_width.png)
 
-##### Task 1b — PTQ vs QAT Comparison
+##### Task 1b - PTQ vs QAT Comparison
 
 - Separate curves are plotted for:
   - **Post-Training Quantization (PTQ)**
@@ -121,11 +121,11 @@ In Tutorial 3, every Linear layer in the model is quantized using a fixed config
 
 ---
 
-#### Task 2 — Pruning the Best Quantized Model
+#### Task 2 - Pruning the Best Quantized Model
 
 Using the best-performing model obtained from Task 1 which seemed to be ~16 bits. We apply pruning to further reduce model complexity.
 
-##### Task 2a — Accuracy vs Sparsity
+##### Task 2a - Accuracy vs Sparsity
 
 - Sparsity levels are varied from **0.1 to 0.9**.
 - A figure is plotted where:
@@ -135,7 +135,7 @@ Using the best-performing model obtained from Task 1 which seemed to be ~16 bits
 
 ![Accuracy vs Sparsity](sparsity_vs_accuracy.png)
 
-##### Task 2b — Pruning Strategy Comparison
+##### Task 2b - Pruning Strategy Comparison
 
 - Separate curves are plotted for:
   - **Random pruning**
@@ -169,12 +169,12 @@ Although separate curves can be plotted, putting them on one plot allows a sharp
 
 ### Task 1 - Comparing Hyperparameter Samplers
 
-Tutorial 5 initially demonstrates the use of random search to find an optimal configuration of hyperparameters and layer choices for the BERT-tiny model for the IMDb classification task. We extend this by evaluating three Optuna samplers.
+Tutorial 5 initially demonstrates the use of random search to find an optimal configuration of hyperparameters and layer choices for the BERT model for the IMDb classification task. We extend this by evaluating three Optuna samplers.
 
 #### Samplers Evaluated
-- **RandomSampler**: Each trial iteration pulls hyperparameter values from the search space uniformly. Provides an unbiased baseline, however, trials are independent and can not infer information from other trials.
-- **GridSampler**: Enumerates combinations of predetermined grid. This method ensures full coverage of space but scales poorly. We therefore limit the grid to four main hyperparameters only. 
-- **TPESampler** (Tree-structured Parzen Estimator): Model-based bayesian optimisation method utilising an intial warm-up of random exploration and two kernel density estimators. These densite estimators, positive and negative hyperparamter configurations, maximise the ratio $\ell(x)/g(x)$, leading the search towards positive regions of the search space.
+- **RandomSampler**: Each trial iteration pulls hyperparameter values from the search space uniformly. Provides an unbiased baseline, however, trials are independent and can not infer information from other trials. A large number of trials are required to find a near-optimal test score accuracy solution.
+- **GridSampler**: Performs a grid search over the entire search space.  Enumerates combinations of predetermined grid. This method ensures full coverage of space but scales poorly. A very large number of trials would be required to search for all possible hyperparamter combinations, for the 30 trials that we test for inis lab, we are unlikely to see any optimal results. Due to the large number of possible combinations we  have limited the grid to five main hyperparameters. 
+- **TPESampler**: uses initial random exploration followed by two kernel density estimators: l(x) modeling the best-performing hyperparameter configurations and g(x) modeling the remaining configurations. By maximising the ratio l(x)/g(x), it guides the search toward regions of the hyperparameter space that are more likely to yield good performance.
 
 Each sampler explores the same search space and optimisation objective, allowing a direct comparison of search efficiency and convergence behaviour.
 
@@ -188,79 +188,63 @@ To ensure a fair comparison, all samplers operated over the same search space:
 | `intermediate_size` | {512, 768, 1024, 1536, 2048} |
 | Linear layer type | {`nn.Linear`, `Identity`} (per eligible layer) |
 
-Each trial trained a freshly initialised BERT model from the sampled configuration for 2 epochs on the IMDb training set. All experiments used 20 trials per sampler. We report the running maximum accuracy to capture convergence behaviour.
-
-TPESampler 
-
-Each sampler is represented by a separate curve to compare performance over time. The tests were each run for two epochs for 10 trial runs, using the running maximal error. These results have been plotted below. 
-
-![Sampler Comparison — Accuracy vs Trials](random_training.png)
-![Sampler Comparison — Accuracy vs Trials](tpe_training.png)
-![Sampler Comparison — Accuracy vs Trials](grid_training.png)
-
-| Sampler | Best Accuracy (10 trials) |
-|---------|--------------------------|
-| RandomSampler | 0.843 |
-| GridSampler |  |
-| TPESampler |  |
+Each trial trained a freshly initialised BERT model from the sampled configuration for 1 epochs on the IMDb training set. All experiments used 30 trials per sampler. We report the running maximum accuracy to capture convergence behaviour.
 
 
-#### Observations
+Each sampler is represented by a separate curve to compare performance over time. The tests were each run for 1 epochs for 30 trial runs, using the running maximal error. These results have been plotted below. 
 
-- Sample efficiency through Bayesian modelling: TPE uses previous trial outcomes to model hyperparameter to performance relationships, making each successive trial more likely to sample positive regions after the warm-up phase.
-- Effective handling of conditional and mixed search spaces: TPE naturally handles the BERT NAS problem's conditional parameters through tree-structured decomposition, unlike GridSampler which struggles with dynamic parameter counts.
-- Robustness to the curse of dimensionality: TPE maintains efficiency in high-dimensional spaces by modeling each hyperparameter independently, avoiding the exponential scaling that affects grid-based methods.
-- Convergence behaviour: TPE's running maximum accuracy curve shows steeper initial climb than RandomSampler, identifying good configurations earlier once it builds informative density estimates after the initial random search in the first 10 trials.
+![Sampler Comparison — Accuracy vs Trials](lab2_samplerEval.png)
+
+#### Experimental Observations
+
+- **Convergence of TPESampler**: TPESampler achieves the fastest convergence, reaching ~86.5% accuracy in 3 trials and steadily improving to ~87% by trial 30, demonstrating effective exploitation of early promising configurations.
+- **GridSampler**: GridSampler starts lowest, ~81%, but improves to reach similar performance to TPESampler', ~86.6%.
+- **RandomSampler**: RandomSampler plateaus early, ~86.4%, with minimal improvement across the 30 trials.
+- **Similar Performances**: All 3 samplers converge to similar accuracies, 86.4-87%, suggesting the search space contains multiple near-optimal configurations for the model architecture. The key difference displayed in this experiment is the convergence speed, making TPESampler most suitable for the best model in Task 2, convergeing the fastest and achieving the strongest performance.
 
 ---
 
 ### Task 2 - Compression-Aware Neural Architecture Search
 
-In Tutorial 5, NAS is first used to identify an optimal model configuration, after which the **CompressionPipeline** is applied to quantize and prune the model. However, this post-search compression may be suboptimal, as different architectures exhibit varying sensitivity to compression techniques.
+In Tutorial 5, NAS is first used to identify an optimal model configuration, after which the CompressionPipeline is applied to quantize and prune the model. However, this post-search compression may be suboptimal, as different architectures exhibit varying sensitivity to compression techniques.
 
-To address this, we implement a **compression-aware search**, where quantization and pruning are incorporated directly into each Optuna trial.
+To address this, we implement a compression-aware search in which quantization and pruning are applied directly into each Optuna trial.
 
 ---
 
-#### Task 2a — Compression-Aware Objective Function
+#### Task 2a - Compression-Aware Objective Function
 
 Within the Optuna objective function:
 1. The model is constructed according to the sampled hyperparameters.
 2. The model is trained for an initial number of iterations.
-3. The **CompressionPipeline** is invoked to apply quantization and pruning.
+3. The CompressionPipeline is invoked to apply quantization and pruning.
 4. Training continues for additional epochs after compression.
-5. The objective function returns the **final model accuracy after compression**.
+5. The objective function returns the final model accuracy after compression.
 
-The sampler that yielded the best results in **Task 1** is reused for this experiment.
+The sampler that yielded the best results in Task 1 (TPESampler) is reused for this experiment.
 
-An additional variant is considered where **final training is performed after quantization/pruning**, allowing further recovery of accuracy.
+An additional variant is considered where final training is performed after quantization/pruning, allowing further recovery of accuracy.
 
 ---
 
-#### Task 2b — Performance Comparison
-
-A new figure is plotted with:
-- **x-axis:** Number of completed trials  
-- **y-axis:** Maximum achieved accuracy up to that trial  
+#### Task 2b - Performance Comparison
 
 The figure includes three curves:
-1. Best performance from **Task 1** (no compression)
-2. Compression-aware search **without** post-compression training
-3. Compression-aware search **with** post-compression training
+1. Best performance from Task 1 (no compression)
+2. Compression-aware search without post-compression training
+3. Compression-aware search with post-compression training
 
-![Compression-Aware NAS — Accuracy vs Trials](compression_aware_accuracy_vs_trials.png)
+![Compression-Aware NAS — Accuracy vs Trials](lab2_task2.png)
 
----
 
 #### Observations
-- *(To be filled in)*
-
-#### Key Takeaway
-- *(To be filled in)*
+- Model without post-training plateaus at ~0.77. After training, quantization and pruning are applied and the model is evaluated without any post-training. Quantization rounds all weights to 8-bit fixed point with only 4 fractional bits of precision, while L1 pruning zeros out the 50% smallest weights in each layer. The first few trials score very poorly at ~0.50.
+- Model with post-training converges at ~0.87. The same compression is applied, but the model is then fine-tuned. This allows the weights to adjust and compensate for the pruning.
+- Post trained model vs task 1 baseline: The compression-aware search favours architectures that are robust to quantization and pruning. Additionally, removing 50% of weights acts as a form of regularisation. Removing some parameters reduces overfitting, which is why the compressed and fine-tuned model ends up generalising slightly better than the task 1 baseline.
 
 ---
 
-## Lab 3 — Mixed Precision Optimisation
+## Lab 3 - Mixed Precision Optimisation
 
 ### Objectives
 - Investigate mixed-precision inference
